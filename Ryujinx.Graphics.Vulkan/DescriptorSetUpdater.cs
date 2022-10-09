@@ -94,7 +94,7 @@ namespace Ryujinx.Graphics.Vulkan
             else
             {
                 // If null descriptors are not supported, we need to pass the handle of a dummy buffer on unused bindings.
-                _dummyBuffer = gd.BufferManager.Create(gd, 0x10000, forConditionalRendering: false, deviceLocal: true);
+                _dummyBuffer = gd.BufferManager.Create(gd, 0x10000, forConditionalRendering: false, baseType: BufferAllocationType.DeviceLocal);
             }
 
             _dummyTexture = gd.CreateTextureView(new GAL.TextureCreateInfo(
@@ -163,7 +163,7 @@ namespace Ryujinx.Graphics.Vulkan
                 var buffer = buffers[i];
                 int index = first + i;
 
-                Auto<DisposableBuffer> vkBuffer = _gd.BufferManager.GetBuffer(commandBuffer, buffer.Handle, false);
+                Auto<DisposableBuffer> vkBuffer = _gd.BufferManager.GetBuffer(commandBuffer, buffer.Handle, false, isSSBO: true);
                 ref Auto<DisposableBuffer> currentVkBuffer = ref _storageBufferRefs[index];
 
                 DescriptorBufferInfo info = new DescriptorBufferInfo()

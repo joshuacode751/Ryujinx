@@ -448,8 +448,8 @@ namespace Ryujinx.Graphics.Vulkan
                     dstSize += dstTemp.Info.GetMipSize2D(l);
                 }
 
-                using var srcTempBuffer = gd.BufferManager.Create(gd, srcSize, deviceLocal: true);
-                using var dstTempBuffer = gd.BufferManager.Create(gd, dstSize, deviceLocal: true);
+                using var srcTempBuffer = gd.BufferManager.Create(gd, srcSize, baseType: BufferAllocationType.DeviceLocal);
+                using var dstTempBuffer = gd.BufferManager.Create(gd, dstSize, baseType: BufferAllocationType.DeviceLocal);
 
                 src.Storage.CopyFromOrToBuffer(
                     cbs.CommandBuffer,
