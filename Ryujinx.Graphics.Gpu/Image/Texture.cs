@@ -1033,10 +1033,9 @@ namespace Ryujinx.Graphics.Gpu.Image
         /// <param name="output">An output span to place the texture data into. If empty, one is generated</param>
         /// <param name="blacklist">True if the texture should be blacklisted, false otherwise</param>
         /// <param name="texture">The specific host texture to flush. Defaults to this texture</param>
-        /// <returns>The span containing the texture data</returns>
-        private ReadOnlySpan<byte> GetTextureDataFromGpu(Span<byte> output, bool blacklist, ITexture texture = null)
+        private void GetTextureDataFromGpu(Span<byte> output, bool blacklist, ITexture texture = null)
         {
-            ReadOnlySpan<byte> data;
+            PinnedSpan<byte> data;
 
             if (texture != null)
             {
@@ -1062,9 +1061,9 @@ namespace Ryujinx.Graphics.Gpu.Image
                 }
             }
 
-            data = ConvertFromHostCompatibleFormat(output, data);
+            ConvertFromHostCompatibleFormat(output, data.Get());
 
-            return data;
+            data.Dispose();
         }
 
         /// <summary>
@@ -1079,10 +1078,9 @@ namespace Ryujinx.Graphics.Gpu.Image
         /// <param name="level">The level of the texture to flush</param>
         /// <param name="blacklist">True if the texture should be blacklisted, false otherwise</param>
         /// <param name="texture">The specific host texture to flush. Defaults to this texture</param>
-        /// <returns>The span containing the texture data</returns>
-        public ReadOnlySpan<byte> GetTextureDataSliceFromGpu(Span<byte> output, int layer, int level, bool blacklist, ITexture texture = null)
+        public void GetTextureDataSliceFromGpu(Span<byte> output, int layer, int level, bool blacklist, ITexture texture = null)
         {
-            ReadOnlySpan<byte> data;
+            PinnedSpan<byte> data;
 
             if (texture != null)
             {
@@ -1108,9 +1106,9 @@ namespace Ryujinx.Graphics.Gpu.Image
                 }
             }
 
-            data = ConvertFromHostCompatibleFormat(output, data, level, true);
+            ConvertFromHostCompatibleFormat(output, data.Get(), level, true);
 
-            return data;
+            data.Dispose();
         }
 
         /// <summary>

@@ -332,7 +332,7 @@ namespace Ryujinx.Graphics.Vulkan
             _pipeline?.FlushCommandsImpl();
         }
 
-        public ReadOnlySpan<byte> GetBufferData(BufferHandle buffer, int offset, int size)
+        public PinnedSpan<byte> GetBufferData(BufferHandle buffer, int offset, int size)
         {
             return BufferManager.GetData(buffer, offset, size);
         }
