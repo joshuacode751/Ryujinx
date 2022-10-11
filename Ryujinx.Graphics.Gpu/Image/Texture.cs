@@ -138,9 +138,9 @@ namespace Ryujinx.Graphics.Gpu.Image
         public LinkedListNode<Texture> CacheNode { get; set; }
 
         /// <summary>
-        /// Indicator that this texture exists on the short cache.
+        /// Entry for this texture in the short duration cache, if present.
         /// </summary>
-        public bool IsShortCached { get; set; }
+        public ShortTextureCacheEntry ShortCacheEntry { get; set; }
 
         /// <summary>
         /// Event to fire when texture data is disposed.
@@ -1512,7 +1512,7 @@ namespace Ryujinx.Graphics.Gpu.Image
             }
             _referenceCount++;
 
-            if (IsShortCached)
+            if (ShortCacheEntry != null)
             {
                 _physicalMemory.TextureCache.RemoveShortCache(this);
             }
@@ -1594,7 +1594,7 @@ namespace Ryujinx.Graphics.Gpu.Image
                 _poolOwners.Clear();
             }
 
-            if (IsShortCached && _context.IsGpuThread())
+            if (ShortCacheEntry != null && _context.IsGpuThread())
             {
                 // If this is called from another thread (unmapped), the short cache will
                 // have to remove this texture on a future tick.
