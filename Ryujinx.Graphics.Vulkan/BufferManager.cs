@@ -57,9 +57,9 @@ namespace Ryujinx.Graphics.Vulkan
             StagingBuffer = new StagingBuffer(gd, this);
         }
 
-        public BufferHandle CreateWithHandle(VulkanRenderer gd, int size, bool deviceLocal)
+        public BufferHandle CreateWithHandle(VulkanRenderer gd, int size, BufferAllocationType baseType = BufferAllocationType.HostMapped, BufferHandle storageHint = default)
         {
-            var holder = Create(gd, size, baseType: BufferAllocationType.Auto);
+            var holder = Create(gd, size, baseType: baseType, storageHint: storageHint);
             if (holder == null)
             {
                 return BufferHandle.Null;
@@ -137,7 +137,7 @@ namespace Ryujinx.Graphics.Vulkan
             return (buffer, allocation, type);
         }
 
-        public unsafe BufferHolder Create(VulkanRenderer gd, int size, bool forConditionalRendering = false, BufferAllocationType baseType = BufferAllocationType.HostMapped)
+        public unsafe BufferHolder Create(VulkanRenderer gd, int size, bool forConditionalRendering = false, BufferAllocationType baseType = BufferAllocationType.HostMapped, BufferHandle storageHint = default)
         {
             BufferAllocationType type = baseType;
 
@@ -151,6 +151,14 @@ namespace Ryujinx.Graphics.Vulkan
                 else
                 {
                     type = size >= BufferSizeDeviceLocalThreshold ? BufferAllocationType.DeviceLocal : BufferAllocationType.HostMapped;
+                }
+
+                if (storageHint != BufferHandle.Null)
+                {
+                    if (TryGetBuffer(storageHint, out var holder))
+                    {
+                        type = holder.DesiredType;
+                    }
                 }
             }
 

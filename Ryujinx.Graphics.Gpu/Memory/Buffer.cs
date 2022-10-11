@@ -80,7 +80,7 @@ namespace Ryujinx.Graphics.Gpu.Memory
             Address         = address;
             Size            = size;
 
-            Handle = context.Renderer.CreateBuffer((int)size);
+            Handle = context.Renderer.CreateBuffer((int)size, baseBuffers?.MaxBy(x => x.Size).Handle ?? BufferHandle.Null);
 
             _useGranular = size > GranularBufferThreshold;
 

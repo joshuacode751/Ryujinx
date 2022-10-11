@@ -271,9 +271,9 @@ namespace Ryujinx.Graphics.Vulkan
             _window = new Window(this, _surface, _physicalDevice, _device);
         }
 
-        public BufferHandle CreateBuffer(int size)
+        public BufferHandle CreateBuffer(int size, BufferHandle storageHint)
         {
-            return BufferManager.CreateWithHandle(this, size, false);
+            return BufferManager.CreateWithHandle(this, size, BufferAllocationType.Auto, storageHint);
         }
 
         public IProgram CreateProgram(ShaderSource[] sources, ShaderInfo info)
