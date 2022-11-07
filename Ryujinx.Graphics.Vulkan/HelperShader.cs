@@ -511,7 +511,7 @@ namespace Ryujinx.Graphics.Vulkan
             (shaderParams[0], shaderParams[1]) = GetSampleCountXYLog2(samples);
             (shaderParams[2], shaderParams[3]) = GetSampleCountXYLog2((int)TextureStorage.ConvertToSampleCountFlags((uint)samples));
 
-            var bufferHandle = gd.BufferManager.CreateWithHandle(gd, ParamsBufferSize, false);
+            var bufferHandle = gd.BufferManager.CreateWithHandle(gd, ParamsBufferSize);
 
             gd.BufferManager.SetData<int>(bufferHandle, 0, shaderParams);
 
