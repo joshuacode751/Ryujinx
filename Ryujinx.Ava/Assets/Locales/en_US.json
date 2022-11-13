@@ -592,5 +592,15 @@
   "RyujinxUpdaterMessage": "Do you want to update Ryujinx to the latest version?",
   "SettingsTabHotkeysVolumeUpHotkey": "Increase Volume:",
   "SettingsTabHotkeysVolumeDownHotkey": "Decrease Volume:",
-  "VolumeShort": "Vol"
+  "VolumeShort": "Vol",
+  "GraphicsAATooltip": "Applies anti-aliasing to the game render",
+  "GraphicsAALabel": "Anti-Aliasing:",
+  "GraphicsUpscalingLabel": "Upscaling:",
+  "GraphicsUpscalingTooltip": "Enables Framebuffer Upscaling",
+  "GraphicsUpscalingLevelLabel": "Level",
+  "GraphicsUpscalingLevelTooltip": "Set Upscaling Level",
+  "SmaaLow": "SMAA Low",
+  "SmaaMedium": "SMAA Medium",
+  "SmaaHigh": "SMAA High",
+  "SmaaUltra": "SMAA Ultra"
 }
