@@ -1355,7 +1355,7 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
                 _state.State.AlphaTestRef,
                 ref attributeTypes,
                 _drawState.HasConstantBufferDrawParameters,
-                _channel.BufferManager.HasUnalignedStorageBuffer);
+                _channel.BufferManager.UnalignedStorageBuffers > 0);
         }
 
         /// <summary>
