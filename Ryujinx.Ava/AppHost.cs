@@ -156,10 +156,25 @@ namespace Ryujinx.Ava
 
             ConfigurationState.Instance.System.IgnoreMissingServices.Event += UpdateIgnoreMissingServicesState;
             ConfigurationState.Instance.Graphics.AspectRatio.Event += UpdateAspectRatioState;
+            ConfigurationState.Instance.Graphics.AntiAliasing.Event += UpdateAntiAliasing;
+            ConfigurationState.Instance.Graphics.UpscaleType.Event += UpdateUpscaleType;
+            ConfigurationState.Instance.Graphics.UpscaleLevel.Event += UpdateUpscaleLevel;
             ConfigurationState.Instance.System.EnableDockedMode.Event += UpdateDockedModeState;
             ConfigurationState.Instance.System.AudioVolume.Event += UpdateAudioVolumeState;
 
             _gpuCancellationTokenSource = new CancellationTokenSource();
+        }
+
+        private void UpdateUpscaleLevel(object sender, ReactiveEventArgs<float> e)
+        {
+            _renderer.Window?.SetUpscaler((Graphics.GAL.UpscaleType)ConfigurationState.Instance.Graphics.UpscaleType.Value);
+            _renderer.Window?.SetUpscalerLevel(ConfigurationState.Instance.Graphics.UpscaleLevel.Value);
+        }
+
+        private void UpdateUpscaleType(object sender, ReactiveEventArgs<Ryujinx.Common.Configuration.UpscaleType> e)
+        {
+            _renderer.Window?.SetUpscaler((Graphics.GAL.UpscaleType)ConfigurationState.Instance.Graphics.UpscaleType.Value);
+            _renderer.Window?.SetUpscalerLevel(ConfigurationState.Instance.Graphics.UpscaleLevel.Value);
         }
 
         private void Parent_PointerMoved(object sender, PointerEventArgs e)
@@ -310,6 +325,11 @@ namespace Ryujinx.Ava
             }
         }
 
+        private void UpdateAntiAliasing(object sender, ReactiveEventArgs<Ryujinx.Common.Configuration.AntiAliasing> e)
+        {
+            _renderer?.Window?.SetAntiAliasing((Graphics.GAL.AntiAliasing)e.NewValue);
+        }
+
         private void UpdateDockedModeState(object sender, ReactiveEventArgs<bool> e)
         {
             Device?.System.ChangeDockedModeState(e.NewValue);
@@ -378,6 +398,9 @@ namespace Ryujinx.Ava
             ConfigurationState.Instance.Graphics.AspectRatio.Event -= UpdateAspectRatioState;
             ConfigurationState.Instance.System.EnableDockedMode.Event -= UpdateDockedModeState;
             ConfigurationState.Instance.System.AudioVolume.Event -= UpdateAudioVolumeState;
+            ConfigurationState.Instance.Graphics.AntiAliasing.Event -= UpdateAntiAliasing;
+            ConfigurationState.Instance.Graphics.UpscaleType.Event -= UpdateUpscaleType;
+            ConfigurationState.Instance.Graphics.UpscaleLevel.Event -= UpdateUpscaleLevel;
 
             _gpuCancellationTokenSource.Cancel();
             _gpuCancellationTokenSource.Dispose();
@@ -817,6 +840,10 @@ namespace Ryujinx.Ava
             Renderer.MakeCurrent();
 
             Device.Gpu.Renderer.Initialize(_glLogLevel);
+
+            _renderer?.Window?.SetAntiAliasing((Graphics.GAL.AntiAliasing)ConfigurationState.Instance.Graphics.AntiAliasing.Value);
+            _renderer?.Window?.SetUpscaler((Graphics.GAL.UpscaleType)ConfigurationState.Instance.Graphics.UpscaleType.Value);
+            _renderer?.Window?.SetUpscalerLevel(ConfigurationState.Instance.Graphics.UpscaleLevel.Value);
 
             Width = (int)Renderer.Bounds.Width;
             Height = (int)Renderer.Bounds.Height;
