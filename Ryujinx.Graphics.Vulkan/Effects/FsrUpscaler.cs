@@ -155,17 +155,19 @@ namespace Ryujinx.Graphics.Vulkan.Effects
                 dstX1,
                 dstY0,
                 dstY1,
-                flipX ? 1 : 0,
-                flipY ? 1 : 0,
+                flipX ? 1.0f : 0.0f,
+                flipY ? 1.0f : 0.0f,
                 scaleX,
-                scaleY
+                scaleY,
+                width,
+                height
             });
 
             int rangeSize = dimensionsBuffer.Length * sizeof(float);
             var bufferHandle = _renderer.BufferManager.CreateWithHandle(_renderer, rangeSize, false);
             _renderer.BufferManager.SetData(bufferHandle, 0, dimensionsBuffer);
 
-            var sharpeningBuffer = new float[] { Level };
+            var sharpeningBuffer = new ReadOnlySpan<float>(new float[] { Level });
             var sharpeningBufferHandle = _renderer.BufferManager.CreateWithHandle(_renderer, sizeof(float), false);
             _renderer.BufferManager.SetData<float>(sharpeningBufferHandle, 0, sharpeningBuffer);
 
@@ -196,9 +198,9 @@ namespace Ryujinx.Graphics.Vulkan.Effects
             _sharpeningPipeline.SetCommandBuffer(cbs);
             _sharpeningPipeline.SetProgram(_sharpeningProgram);
             _sharpeningPipeline.SetTextureAndSampler(ShaderStage.Compute, 1, _intermediaryTexture, _sampler);
-            _scalingPipeline.SetUniformBuffers(stackalloc[] { new BufferAssignment(2, bufferRanges) });
-            bufferRanges = new BufferRange(sharpeningBufferHandle, 0, sizeof(float));
-            _scalingPipeline.SetUniformBuffers(stackalloc[] { new BufferAssignment(4, bufferRanges) });
+            _sharpeningPipeline.SetUniformBuffers(stackalloc[] { new BufferAssignment(2, bufferRanges) });
+            var sharpeningRange = new BufferRange(sharpeningBufferHandle, 0, sizeof(float));
+            _sharpeningPipeline.SetUniformBuffers(stackalloc[] { new BufferAssignment(4, sharpeningRange) });
             _sharpeningPipeline.SetScissors(scissors);
             _sharpeningPipeline.SetViewports(viewports, false);
             _sharpeningPipeline.SetImage(0, destinationTexture, GAL.Format.R8G8B8A8Unorm);

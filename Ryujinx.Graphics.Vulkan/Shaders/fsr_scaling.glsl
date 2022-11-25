@@ -18,6 +18,8 @@ layout( binding = 2 ) uniform dimensions{
  bool flipY;
  float scaleX;
  float scaleY;
+ float width;
+ float height;
 };
 
 #define A_GPU 1
@@ -2696,7 +2698,7 @@ void setBounds(vec2 bottomLeft, vec2 topRight) {
 AF2 translateDest(AF2 pos) {
     AF2 translatedPos = AF2(pos.x, pos.y);
     translatedPos.x = flipX ? dstX1 - translatedPos.x : translatedPos.x;
-    translatedPos.y = flipY ? dstY1 - translatedPos.y : translatedPos.y;
+    translatedPos.y = flipY ? height - translatedPos.y : translatedPos.y;
     return translatedPos;
 }
 

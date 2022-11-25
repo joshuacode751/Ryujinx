@@ -166,14 +166,10 @@ namespace Ryujinx.Graphics.OpenGL
                     crop.FlipX,
                     crop.FlipY);
 
-                srcX0 = 0;
-                srcY0 = 0;
-                srcX1 = _width;
-                srcY1 = _height;
-                dstX0 = 0;
-                dstY0 = 0;
-                dstX1 = _width;
-                dstY1 = _height;
+                srcX0 = dstX0;
+                srcY0 = dstY0;
+                srcX1 = dstX1;
+                srcY1 = dstY1;
 
                 GL.FramebufferTexture(
                     FramebufferTarget.ReadFramebuffer,
