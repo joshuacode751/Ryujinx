@@ -596,5 +596,15 @@
   "SettingsTabHotkeysVolumeDownHotkey": "Decrease Volume:",
   "VolumeShort": "Vol",
   "SettingsEnableMacroHLE": "Enable Macro HLE",
-  "SettingsEnableMacroHLETooltip": "High-level emulation of GPU Macro code.\n\nImproves performance, but may cause graphical glitches in some games.\n\nLeave ON if unsure."
+  "SettingsEnableMacroHLETooltip": "High-level emulation of GPU Macro code.\n\nImproves performance, but may cause graphical glitches in some games.\n\nLeave ON if unsure.",
+  "GraphicsAATooltip": "Applies anti-aliasing to the game render",
+  "GraphicsAALabel": "Anti-Aliasing:",
+  "GraphicsUpscalingLabel": "Upscaling:",
+  "GraphicsUpscalingTooltip": "Enables Framebuffer Upscaling",
+  "GraphicsUpscalingLevelLabel": "Level",
+  "GraphicsUpscalingLevelTooltip": "Set Upscaling Level",
+  "SmaaLow": "SMAA Low",
+  "SmaaMedium": "SMAA Medium",
+  "SmaaHigh": "SMAA High",
+  "SmaaUltra": "SMAA Ultra"
 }
