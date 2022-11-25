@@ -448,8 +448,8 @@ namespace Ryujinx.Graphics.Vulkan
                     dstSize += dstTemp.Info.GetMipSize2D(l);
                 }
 
-                using var srcTempBuffer = gd.BufferManager.Create(gd, srcSize, deviceLocal: true);
-                using var dstTempBuffer = gd.BufferManager.Create(gd, dstSize, deviceLocal: true);
+                using var srcTempBuffer = gd.BufferManager.Create(gd, srcSize, baseType: BufferAllocationType.DeviceLocal);
+                using var dstTempBuffer = gd.BufferManager.Create(gd, dstSize, baseType: BufferAllocationType.DeviceLocal);
 
                 src.Storage.CopyFromOrToBuffer(
                     cbs.CommandBuffer,
@@ -699,7 +699,7 @@ namespace Ryujinx.Graphics.Vulkan
             return bitmap;
         }
 
-        public ReadOnlySpan<byte> GetData()
+        public PinnedSpan<byte> GetData()
         {
             BackgroundResource resources = _gd.BackgroundResources.Get();
 
@@ -707,15 +707,15 @@ namespace Ryujinx.Graphics.Vulkan
             {
                 _gd.FlushAllCommands();
 
-                return GetData(_gd.CommandBufferPool, resources.GetFlushBuffer());
+                return new PinnedSpan<byte>(GetData(_gd.CommandBufferPool, resources.GetFlushBuffer()));
             }
             else
             {
-                return GetData(resources.GetPool(), resources.GetFlushBuffer());
+                return new PinnedSpan<byte>(GetData(resources.GetPool(), resources.GetFlushBuffer()));
             }
         }
 
-        public ReadOnlySpan<byte> GetData(int layer, int level)
+        public PinnedSpan<byte> GetData(int layer, int level)
         {
             BackgroundResource resources = _gd.BackgroundResources.Get();
 
@@ -723,11 +723,11 @@ namespace Ryujinx.Graphics.Vulkan
             {
                 _gd.FlushAllCommands();
 
-                return GetData(_gd.CommandBufferPool, resources.GetFlushBuffer(), layer, level);
+                return new PinnedSpan<byte>(GetData(_gd.CommandBufferPool, resources.GetFlushBuffer(), layer, level));
             }
             else
             {
-                return GetData(resources.GetPool(), resources.GetFlushBuffer(), layer, level);
+                return new PinnedSpan<byte>(GetData(resources.GetPool(), resources.GetFlushBuffer(), layer, level));
             }
         }
 
