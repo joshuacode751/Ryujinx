@@ -1,6 +1,7 @@
 ﻿using Ryujinx.Graphics.GAL;
 using Ryujinx.Graphics.Vulkan.Effects;
 using Silk.NET.Vulkan;
+using Silk.NET.Vulkan.Extensions.KHR;
 using System;
 using System.Linq;
 using VkFormat = Silk.NET.Vulkan.Format;
@@ -58,6 +59,7 @@ namespace Ryujinx.Graphics.Vulkan
 
         private void RecreateSwapchain()
         {
+            var oldSwapchain = _swapchain;
             _vsyncModeChanged = false;
 
             for (int i = 0; i < _swapchainImageViews.Length; i++)
@@ -66,6 +68,10 @@ namespace Ryujinx.Graphics.Vulkan
             }
 
             CreateSwapchain();
+
+            // Destroy old Swapchain.
+            _gd.Api.DeviceWaitIdle(_device);
+            _gd.SwapchainApi.DestroySwapchain(_device, oldSwapchain, Span<AllocationCallbacks>.Empty);
         }
 
         private unsafe void CreateSwapchain()
