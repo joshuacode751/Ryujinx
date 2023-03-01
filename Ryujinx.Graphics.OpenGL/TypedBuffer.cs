@@ -10,7 +10,7 @@ namespace Ryujinx.Graphics.OpenGL
     /// <typeparam name="T">Type of the buffer data</typeparam>
     class TypedBuffer<T> where T : unmanaged
     {
-        private readonly OpenGLRenderer _renderer;
+        private readonly IRenderer _renderer;
         private BufferHandle _buffer;
 
         /// <summary>
@@ -23,7 +23,7 @@ namespace Ryujinx.Graphics.OpenGL
         /// </summary>
         /// <param name="renderer">Renderer</param>
         /// <param name="count">Number of data elements on the buffer</param>
-        public TypedBuffer(OpenGLRenderer renderer, int count)
+        public TypedBuffer(IRenderer renderer, int count)
         {
             _renderer = renderer;
             _buffer = renderer.CreateBuffer(Size = count * Unsafe.SizeOf<T>());

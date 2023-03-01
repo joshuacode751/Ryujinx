@@ -542,7 +542,7 @@ namespace Ryujinx.Graphics.Vulkan
             return bitmap;
         }
 
-        public ReadOnlySpan<byte> GetData()
+        public PinnedSpan<byte> GetData()
         {
             BackgroundResource resources = _gd.BackgroundResources.Get();
 
@@ -550,15 +550,15 @@ namespace Ryujinx.Graphics.Vulkan
             {
                 _gd.FlushAllCommands();
 
-                return GetData(_gd.CommandBufferPool, resources.GetFlushBuffer());
+                return new PinnedSpan<byte>(GetData(_gd.CommandBufferPool, resources.GetFlushBuffer()));
             }
             else
             {
-                return GetData(resources.GetPool(), resources.GetFlushBuffer());
+                return new PinnedSpan<byte>(GetData(resources.GetPool(), resources.GetFlushBuffer()));
             }
         }
 
-        public ReadOnlySpan<byte> GetData(int layer, int level)
+        public PinnedSpan<byte> GetData(int layer, int level)
         {
             BackgroundResource resources = _gd.BackgroundResources.Get();
 
@@ -566,11 +566,11 @@ namespace Ryujinx.Graphics.Vulkan
             {
                 _gd.FlushAllCommands();
 
-                return GetData(_gd.CommandBufferPool, resources.GetFlushBuffer(), layer, level);
+                return new PinnedSpan<byte>(GetData(_gd.CommandBufferPool, resources.GetFlushBuffer(), layer, level));
             }
             else
             {
-                return GetData(resources.GetPool(), resources.GetFlushBuffer(), layer, level);
+                return new PinnedSpan<byte>(GetData(resources.GetPool(), resources.GetFlushBuffer(), layer, level));
             }
         }
 

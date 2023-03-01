@@ -94,6 +94,21 @@ namespace Ryujinx.Graphics.Vulkan
             return bestCandidateIndex;
         }
 
+        public bool IsDeviceMemoryShared(Vk api, PhysicalDevice physicalDevice)
+        {
+            // The device is regarded as having shared memory if all heaps have the device local bit.
+
+            for (int i = 0; i < _physicalDeviceMemoryProperties.MemoryHeapCount; i++)
+            {
+                if (!_physicalDeviceMemoryProperties.MemoryHeaps[i].Flags.HasFlag(MemoryHeapFlags.DeviceLocalBit))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public void Dispose()
         {
             for (int i = 0; i < _blockLists.Count; i++)
