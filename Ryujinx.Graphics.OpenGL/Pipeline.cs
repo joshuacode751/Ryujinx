@@ -790,6 +790,16 @@ namespace Ryujinx.Graphics.OpenGL
         {
             _bindlessManager.Add(textureId, texture, samplerId, sampler);
         }
+        
+        public double GetCounterDivisor(CounterType type)
+        {
+            if (type == CounterType.SamplesPassed)
+            {
+                return _renderScale[0].X * _renderScale[0].X;
+            }
+
+            return 1;
+        }
 
         public void SetAlphaTest(bool enable, float reference, CompareOp op)
         {
