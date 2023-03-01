@@ -770,6 +770,8 @@ namespace Ryujinx.Graphics.OpenGL.Image
         /// </summary>
         public void Release()
         {
+            RevokeBindlessAccess();
+
             bool hadHandle = Handle != 0;
 
             if (_parent.DefaultView != this)

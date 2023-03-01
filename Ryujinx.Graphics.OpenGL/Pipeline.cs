@@ -27,7 +27,6 @@ namespace Ryujinx.Graphics.OpenGL
         private IntPtr _indexBaseOffset;
 
         private DrawElementsType _elementsType;
-
         private PrimitiveType _primitiveType;
 
         private int _stencilFrontMask;
@@ -70,9 +69,11 @@ namespace Ryujinx.Graphics.OpenGL
         private readonly BufferHandle[] _tfbs;
         private readonly BufferRange[] _tfbTargets;
 
+        private readonly BindlessManager _bindlessManager;
+
         private ColorF _blendConstant;
 
-        internal Pipeline()
+        internal Pipeline(OpenGLRenderer renderer)
         {
             _drawTexture = new DrawTextureEmulation();
             _rasterizerDiscard = false;
@@ -89,6 +90,8 @@ namespace Ryujinx.Graphics.OpenGL
 
             _tfbs = new BufferHandle[Constants.MaxTransformFeedbackBuffers];
             _tfbTargets = new BufferRange[Constants.MaxTransformFeedbackBuffers];
+
+            _bindlessManager = new BindlessManager(renderer);
         }
 
         public void Initialize(OpenGLRenderer renderer)
@@ -773,6 +776,21 @@ namespace Ryujinx.Graphics.OpenGL
             _tfEnabled = false;
         }
 
+        public void RegisterBindlessSampler(int samplerId, ISampler sampler)
+        {
+            _bindlessManager.AddSeparateSampler(samplerId, sampler);
+        }
+
+        public void RegisterBindlessTexture(int textureId, ITexture texture)
+        {
+            _bindlessManager.AddSeparateTexture(textureId, texture);
+        }
+
+        public void RegisterBindlessTextureAndSampler(int textureId, ITexture texture, int samplerId, ISampler sampler)
+        {
+            _bindlessManager.Add(textureId, texture, samplerId, sampler);
+        }
+
         public void SetAlphaTest(bool enable, float reference, CompareOp op)
         {
             if (!enable)
@@ -1347,7 +1365,6 @@ namespace Ryujinx.Graphics.OpenGL
                 _unit0Sampler = glSampler;
             }
         }
-
 
         public void SetTransformFeedbackBuffers(ReadOnlySpan<BufferRange> buffers)
         {

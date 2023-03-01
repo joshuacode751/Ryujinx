@@ -118,6 +118,52 @@ namespace Ryujinx.Graphics.Gpu.Image
         }
 
         /// <summary>
+        /// Loads all the samplers currently registered by the guest application on the pool.
+        /// This is required for bindless access, as it's not possible to predict which sampler will be used.
+        /// </summary>
+        public void LoadAll()
+        {
+            if (SequenceNumber != Context.SequenceNumber)
+            {
+                SequenceNumber = Context.SequenceNumber;
+
+                SynchronizeMemory();
+            }
+
+            ModifiedEntries.BeginIterating();
+
+            int id;
+
+            while ((id = ModifiedEntries.GetNextAndClear()) >= 0)
+            {
+                Sampler sampler = Items[id] ?? GetValidated(id);
+
+                if (sampler != null)
+                {
+                    Context.Renderer.Pipeline.RegisterBindlessSampler(id, sampler.GetHostSampler(null));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the sampler at the given <paramref name="id"/> from the cache,
+        /// or creates a new one if not found.
+        /// </summary>
+        /// <param name="id">Index of the sampler on the pool</param>
+        /// <returns>Sampler for the given pool index</returns>
+        private Sampler GetValidated(int id)
+        {
+            SamplerDescriptor descriptor = GetDescriptor(id);
+
+            if (descriptor.UnpackFontFilterWidth() != 1 || descriptor.UnpackFontFilterHeight() != 1 || (descriptor.Word0 >> 23) != 0)
+            {
+                return null;
+            }
+
+            return Get(id);
+        }
+
+        /// <summary>
         /// Implementation of the sampler pool range invalidation.
         /// </summary>
         /// <param name="address">Start address of the range of the sampler pool</param>
@@ -146,6 +192,8 @@ namespace Ryujinx.Graphics.Gpu.Image
 
                     Items[id] = null;
                 }
+
+                ModifiedEntries.Set(id);
             }
         }
 
