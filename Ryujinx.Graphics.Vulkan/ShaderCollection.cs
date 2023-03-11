@@ -15,8 +15,6 @@ namespace Ryujinx.Graphics.Vulkan
 
         private readonly PipelineLayoutCacheEntry _plce;
 
-        public PipelineLayout PipelineLayout => _plce.PipelineLayout;
-
         public bool HasMinimalLayout { get; }
         public bool UsePushDescriptors { get; }
         public bool IsCompute { get; }
@@ -99,14 +97,14 @@ namespace Ryujinx.Graphics.Vulkan
 
             _shaders = internalShaders;
 
-            bool usePd = !isMinimal && VulkanConfiguration.UsePushDescriptors && _gd.Capabilities.SupportsPushDescriptors;
+            bool usePushDescriptors = !isMinimal && VulkanConfiguration.UsePushDescriptors && _gd.Capabilities.SupportsPushDescriptors;
 
             _plce = isMinimal
                 ? gd.PipelineLayoutCache.Create(gd, device, shaders)
-                : gd.PipelineLayoutCache.GetOrCreate(gd, device, stages, usePd);
+                : gd.PipelineLayoutCache.GetOrCreate(gd, device, stages, usePushDescriptors);
 
             HasMinimalLayout = isMinimal;
-            UsePushDescriptors = usePd;
+            UsePushDescriptors = usePushDescriptors;
 
             Stages = stages;
 
@@ -234,7 +232,6 @@ namespace Ryujinx.Graphics.Vulkan
 
             pipeline.Stages[0] = _shaders[0].GetInfo();
             pipeline.StagesCount = 1;
-            pipeline.PipelineLayout = PipelineLayout;
 
             pipeline.CreateComputePipeline(_gd, _device, this, (_gd.Pipeline as PipelineBase).PipelineCache);
             pipeline.Dispose();
@@ -262,7 +259,6 @@ namespace Ryujinx.Graphics.Vulkan
             }
 
             pipeline.StagesCount = (uint)_shaders.Length;
-            pipeline.PipelineLayout = PipelineLayout;
 
             pipeline.CreateGraphicsPipeline(_gd, _device, this, (_gd.Pipeline as PipelineBase).PipelineCache, renderPass.Value);
             pipeline.Dispose();
@@ -380,6 +376,27 @@ namespace Ryujinx.Graphics.Vulkan
             out bool isNew)
         {
             return _plce.GetNewDescriptorSetCollection(gd, commandBufferIndex, setIndex, out isNew);
+        }
+
+        public PipelineLayout GetPipelineLayout(VulkanRenderer gd, uint bindlessTextureCount, uint bindlessSamplersCount)
+        {
+            return GetPipelineLayoutCacheEntry(gd, bindlessTextureCount, bindlessSamplersCount).PipelineLayout;
+        }
+
+        public PipelineLayoutCacheEntry GetPipelineLayoutCacheEntry(VulkanRenderer gd, uint bindlessTextureCount, uint bindlessSamplersCount)
+        {
+            if ((bindlessTextureCount | bindlessSamplersCount) == 0)
+            {
+                return _plce;
+            }
+
+            var usageInfo = new PipelineLayoutUsageInfo(
+                Stages,
+                bindlessTextureCount,
+                bindlessSamplersCount,
+                UsePushDescriptors);
+
+            return gd.PipelineLayoutCache.GetOrCreate(gd, _device, usageInfo);
         }
 
         protected virtual unsafe void Dispose(bool disposing)

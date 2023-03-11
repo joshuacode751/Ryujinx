@@ -13,6 +13,7 @@ namespace Ryujinx.Graphics.Shader
         public ShaderIdentification Identification { get; }
         public int GpLayerInputAttribute { get; }
         public ShaderStage Stage { get; }
+        public BindlessTextureFlags BindlessTextureFlags { get; }
         public bool UsesInstanceId { get; }
         public bool UsesDrawParameters { get; }
         public bool UsesRtLayer { get; }
@@ -27,6 +28,7 @@ namespace Ryujinx.Graphics.Shader
             ShaderIdentification identification,
             int gpLayerInputAttribute,
             ShaderStage stage,
+            BindlessTextureFlags bindlessTextureFlags,
             bool usesInstanceId,
             bool usesDrawParameters,
             bool usesRtLayer,
@@ -41,6 +43,7 @@ namespace Ryujinx.Graphics.Shader
             Identification = identification;
             GpLayerInputAttribute = gpLayerInputAttribute;
             Stage = stage;
+            BindlessTextureFlags = bindlessTextureFlags;
             UsesInstanceId = usesInstanceId;
             UsesDrawParameters = usesDrawParameters;
             UsesRtLayer = usesRtLayer;

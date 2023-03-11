@@ -303,9 +303,20 @@ namespace Ryujinx.Graphics.Vulkan
             set => Internal.Id9 = (Internal.Id9 & 0xFFFFFFFFFFFFFFCF) | ((ulong)value << 4);
         }
 
+        public uint BindlessTexturesCount
+        {
+            get => (uint)((Internal.Id10 >> 0) & 0xFFFFFFFF);
+            set => Internal.Id10 = (Internal.Id10 & 0xFFFFFFFF00000000) | ((ulong)value << 0);
+        }
+
+        public uint BindlessSamplersCount
+        {
+            get => (uint)((Internal.Id10 >> 32) & 0xFFFFFFFF);
+            set => Internal.Id10 = (Internal.Id10 & 0xFFFFFFFF) | ((ulong)value << 32);
+        }
+
         public NativeArray<PipelineShaderStageCreateInfo> Stages;
         public NativeArray<PipelineShaderStageRequiredSubgroupSizeCreateInfoEXT> StageRequiredSubgroupSizes;
-        public PipelineLayout PipelineLayout;
         public SpecData SpecializationData;
 
         public void Initialize()
@@ -351,7 +362,7 @@ namespace Ryujinx.Graphics.Vulkan
                 SType = StructureType.ComputePipelineCreateInfo,
                 Stage = Stages[0],
                 BasePipelineIndex = -1,
-                Layout = PipelineLayout
+                Layout = program.GetPipelineLayout(gd, BindlessTexturesCount, BindlessSamplersCount)
             };
 
             Pipeline pipelineHandle = default;
@@ -584,7 +595,7 @@ namespace Ryujinx.Graphics.Vulkan
                     PDepthStencilState = &depthStencilState,
                     PColorBlendState = &colorBlendState,
                     PDynamicState = &pipelineDynamicStateCreateInfo,
-                    Layout = PipelineLayout,
+                    Layout = program.GetPipelineLayout(gd, BindlessTexturesCount, BindlessSamplersCount),
                     RenderPass = renderPass,
                     BasePipelineIndex = -1
                 };
