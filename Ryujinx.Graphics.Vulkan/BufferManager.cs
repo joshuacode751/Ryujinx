@@ -23,6 +23,11 @@ namespace Ryujinx.Graphics.Vulkan
         private const MemoryPropertyFlags DeviceLocalBufferMemoryFlags =
             MemoryPropertyFlags.DeviceLocalBit;
 
+        private const MemoryPropertyFlags DeviceLocalMappedBufferMemoryFlags =
+            MemoryPropertyFlags.DeviceLocalBit |
+            MemoryPropertyFlags.HostVisibleBit |
+            MemoryPropertyFlags.HostCoherentBit;
+
         private const MemoryPropertyFlags FlushableDeviceLocalBufferMemoryFlags =
             MemoryPropertyFlags.HostVisibleBit |
             MemoryPropertyFlags.HostCoherentBit |
@@ -39,6 +44,8 @@ namespace Ryujinx.Graphics.Vulkan
             BufferUsageFlags.VertexBufferBit |
             BufferUsageFlags.TransformFeedbackBufferBitExt;
 
+        private const int BufferSizeDeviceLocalThreshold = 512 * 1024; // 512kb
+        
         private readonly Device _device;
 
         private readonly IdList<BufferHolder> _buffers;
@@ -54,14 +61,14 @@ namespace Ryujinx.Graphics.Vulkan
             StagingBuffer = new StagingBuffer(gd, this);
         }
 
-        public BufferHandle CreateWithHandle(VulkanRenderer gd, int size, bool deviceLocal)
+        public BufferHandle CreateWithHandle(VulkanRenderer gd, int size, BufferAllocationType baseType = BufferAllocationType.HostMapped, BufferHandle storageHint = default)
         {
-            return CreateWithHandle(gd, size, deviceLocal, out _);
+            return CreateWithHandle(gd, size, out _, baseType, storageHint);
         }
 
-        public BufferHandle CreateWithHandle(VulkanRenderer gd, int size, bool deviceLocal, out BufferHolder holder)
+        public BufferHandle CreateWithHandle(VulkanRenderer gd, int size, out BufferHolder holder, BufferAllocationType baseType = BufferAllocationType.HostMapped, BufferHandle storageHint = default)
         {
-            holder = Create(gd, size, deviceLocal: deviceLocal);
+            holder = Create(gd, size, baseType: baseType, storageHint: storageHint);
             if (holder == null)
             {
                 return BufferHandle.Null;
@@ -74,7 +81,13 @@ namespace Ryujinx.Graphics.Vulkan
             return Unsafe.As<ulong, BufferHandle>(ref handle64);
         }
 
-        public unsafe BufferHolder Create(VulkanRenderer gd, int size, bool forConditionalRendering = false, bool deviceLocal = false)
+        public unsafe (Silk.NET.Vulkan.Buffer buffer, MemoryAllocation allocation, BufferAllocationType resultType) CreateBacking(
+            VulkanRenderer gd,
+            int size,
+            BufferAllocationType type,
+            bool forConditionalRendering = false,
+            BufferAllocationType fallbackType = BufferAllocationType.Auto
+            )
         {
             var usage = DefaultBufferUsageFlags;
 
@@ -98,48 +111,92 @@ namespace Ryujinx.Graphics.Vulkan
             gd.Api.CreateBuffer(_device, in bufferCreateInfo, null, out var buffer).ThrowOnError();
             gd.Api.GetBufferMemoryRequirements(_device, buffer, out var requirements);
 
-            MemoryPropertyFlags allocateFlags;
-            MemoryPropertyFlags allocateFlagsAlt;
+            MemoryAllocation allocation;
 
-            if (deviceLocal)
+            do
             {
-                allocateFlags = DeviceLocalBufferMemoryFlags;
-                allocateFlagsAlt = DeviceLocalBufferMemoryFlags;
-            }
-            else
-            {
-                allocateFlags = DefaultBufferMemoryFlags;
-                allocateFlagsAlt = DefaultBufferMemoryAltFlags;
-            }
+                var allocateFlags = type switch
+                {
+                    BufferAllocationType.HostMapped => DefaultBufferMemoryFlags,
+                    BufferAllocationType.DeviceLocal => DeviceLocalBufferMemoryFlags,
+                    BufferAllocationType.DeviceLocalMapped => DeviceLocalMappedBufferMemoryFlags,
+                    _ => DefaultBufferMemoryFlags
+                };
 
-            var allocation = gd.MemoryAllocator.AllocateDeviceMemory(requirements, allocateFlags, allocateFlagsAlt);
+                // If an allocation with this memory type fails, fall back to the previous one.
+                try
+                {
+                    allocation = gd.MemoryAllocator.AllocateDeviceMemory(requirements, allocateFlags);
+                }
+                catch (VulkanException)
+                {
+                    allocation = default;
+                }
+            }
+            while (allocation.Memory.Handle == 0 && (--type != fallbackType));
 
             if (allocation.Memory.Handle == 0UL)
             {
                 gd.Api.DestroyBuffer(_device, buffer, null);
-                return null;
+                return default;
             }
 
             gd.Api.BindBufferMemory(_device, buffer, allocation.Memory, allocation.Offset);
 
-            return new BufferHolder(gd, _device, buffer, allocation, size);
+            return (buffer, allocation, type);
         }
 
-        public Auto<DisposableBufferView> CreateView(BufferHandle handle, VkFormat format, int offset, int size)
+        public unsafe BufferHolder Create(VulkanRenderer gd, int size, bool forConditionalRendering = false, BufferAllocationType baseType = BufferAllocationType.HostMapped, BufferHandle storageHint = default)
         {
-            if (TryGetBuffer(handle, out var holder))
+            BufferAllocationType type = baseType;
+
+            if (baseType == BufferAllocationType.Auto)
             {
-                return holder.CreateView(format, offset, size);
+                if (gd.IsSharedMemory)
+                {
+                    baseType = BufferAllocationType.HostMapped;
+                    type = baseType;
+                }
+                else
+                {
+                    type = size >= BufferSizeDeviceLocalThreshold ? BufferAllocationType.DeviceLocal : BufferAllocationType.HostMapped;
+                }
+
+                if (storageHint != BufferHandle.Null)
+                {
+                    if (TryGetBuffer(storageHint, out var holder))
+                    {
+                        type = holder.DesiredType;
+                    }
+                }
+            }
+
+            (Silk.NET.Vulkan.Buffer buffer, MemoryAllocation allocation, BufferAllocationType resultType) =
+                CreateBacking(gd, size, type, forConditionalRendering);
+
+            if (buffer.Handle != 0)
+            {
+                return new BufferHolder(gd, _device, buffer, allocation, size, baseType, resultType);
             }
 
             return null;
         }
 
-        public Auto<DisposableBuffer> GetBuffer(CommandBuffer commandBuffer, BufferHandle handle, bool isWrite)
+        public Auto<DisposableBufferView> CreateView(BufferHandle handle, VkFormat format, int offset, int size, Action invalidateView)
         {
             if (TryGetBuffer(handle, out var holder))
             {
-                return holder.GetBuffer(commandBuffer, isWrite);
+                return holder.CreateView(format, offset, size, invalidateView);
+            }
+
+            return null;
+        }
+
+        public Auto<DisposableBuffer> GetBuffer(CommandBuffer commandBuffer, BufferHandle handle, bool isWrite, bool isSSBO = false)
+        {
+            if (TryGetBuffer(handle, out var holder))
+            {
+                return holder.GetBuffer(commandBuffer, isWrite, isSSBO);
             }
 
             return null;
@@ -332,14 +389,14 @@ namespace Ryujinx.Graphics.Vulkan
             return null;
         }
 
-        public ReadOnlySpan<byte> GetData(BufferHandle handle, int offset, int size)
+        public PinnedSpan<byte> GetData(BufferHandle handle, int offset, int size)
         {
             if (TryGetBuffer(handle, out var holder))
             {
                 return holder.GetData(offset, size);
             }
 
-            return ReadOnlySpan<byte>.Empty;
+            return new PinnedSpan<byte>();
         }
 
         public void SetData<T>(BufferHandle handle, int offset, ReadOnlySpan<T> data) where T : unmanaged

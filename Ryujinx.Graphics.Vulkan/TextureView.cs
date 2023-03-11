@@ -1,4 +1,4 @@
-﻿using Ryujinx.Common.Memory;
+using Ryujinx.Common.Memory;
 using Ryujinx.Graphics.GAL;
 using Silk.NET.Vulkan;
 using System;
@@ -205,6 +205,13 @@ namespace Ryujinx.Graphics.Vulkan
                 int levels = Math.Min(Info.Levels, dst.Info.Levels - firstLevel);
                 _gd.HelperShader.CopyIncompatibleFormats(_gd, cbs, src, dst, 0, firstLayer, 0, firstLevel, layers, levels);
             }
+            else if (src.Info.Format.IsDepthOrStencil() != dst.Info.Format.IsDepthOrStencil())
+            {
+                int layers = Math.Min(Info.GetLayers(), dst.Info.GetLayers() - firstLayer);
+                int levels = Math.Min(Info.Levels, dst.Info.Levels - firstLevel);
+
+                _gd.HelperShader.CopyColor(_gd, cbs, src, dst, 0, firstLayer, 0, FirstLevel, layers, levels);
+            }
             else
             {
                 TextureCopy.Copy(
@@ -253,6 +260,10 @@ namespace Ryujinx.Graphics.Vulkan
             else if (dst.Info.BytesPerPixel != Info.BytesPerPixel)
             {
                 _gd.HelperShader.CopyIncompatibleFormats(_gd, cbs, src, dst, srcLayer, dstLayer, srcLevel, dstLevel, 1, 1);
+            }
+            else if (src.Info.Format.IsDepthOrStencil() != dst.Info.Format.IsDepthOrStencil())
+            {
+                _gd.HelperShader.CopyColor(_gd, cbs, src, dst, srcLayer, dstLayer, srcLevel, dstLevel, 1, 1);
             }
             else
             {
@@ -531,7 +542,7 @@ namespace Ryujinx.Graphics.Vulkan
             return bitmap;
         }
 
-        public ReadOnlySpan<byte> GetData()
+        public PinnedSpan<byte> GetData()
         {
             BackgroundResource resources = _gd.BackgroundResources.Get();
 
@@ -539,15 +550,15 @@ namespace Ryujinx.Graphics.Vulkan
             {
                 _gd.FlushAllCommands();
 
-                return GetData(_gd.CommandBufferPool, resources.GetFlushBuffer());
+                return new PinnedSpan<byte>(GetData(_gd.CommandBufferPool, resources.GetFlushBuffer()));
             }
             else
             {
-                return GetData(resources.GetPool(), resources.GetFlushBuffer());
+                return new PinnedSpan<byte>(GetData(resources.GetPool(), resources.GetFlushBuffer()));
             }
         }
 
-        public ReadOnlySpan<byte> GetData(int layer, int level)
+        public PinnedSpan<byte> GetData(int layer, int level)
         {
             BackgroundResource resources = _gd.BackgroundResources.Get();
 
@@ -555,11 +566,11 @@ namespace Ryujinx.Graphics.Vulkan
             {
                 _gd.FlushAllCommands();
 
-                return GetData(_gd.CommandBufferPool, resources.GetFlushBuffer(), layer, level);
+                return new PinnedSpan<byte>(GetData(_gd.CommandBufferPool, resources.GetFlushBuffer(), layer, level));
             }
             else
             {
-                return GetData(resources.GetPool(), resources.GetFlushBuffer(), layer, level);
+                return new PinnedSpan<byte>(GetData(resources.GetPool(), resources.GetFlushBuffer(), layer, level));
             }
         }
 

@@ -8,11 +8,13 @@ namespace Ryujinx.Graphics.Vulkan
     {
         private readonly PipelineLayoutCacheEntry[] _plce;
         private readonly List<PipelineLayoutCacheEntry> _plceMinimal;
+        private readonly List<(PipelineLayoutUsageInfo, PipelineLayoutCacheEntry)> _plceBindless;
 
         public PipelineLayoutCache()
         {
             _plce = new PipelineLayoutCacheEntry[1 << Constants.MaxShaderStages];
             _plceMinimal = new List<PipelineLayoutCacheEntry>();
+            _plceBindless = new List<(PipelineLayoutUsageInfo, PipelineLayoutCacheEntry)>();
         }
 
         public PipelineLayoutCacheEntry Create(VulkanRenderer gd, Device device, ShaderSource[] shaders)
@@ -22,14 +24,34 @@ namespace Ryujinx.Graphics.Vulkan
             return plce;
         }
 
-        public PipelineLayoutCacheEntry GetOrCreate(VulkanRenderer gd, Device device, uint stages, bool usePd)
+        public PipelineLayoutCacheEntry GetOrCreate(VulkanRenderer gd, Device device, uint stages, bool usePushDescriptors)
         {
             if (_plce[stages] == null)
             {
-                _plce[stages] = new PipelineLayoutCacheEntry(gd, device, stages, usePd);
+                _plce[stages] = new PipelineLayoutCacheEntry(gd, device, new PipelineLayoutUsageInfo(stages, 0, 0, usePushDescriptors));
             }
 
             return _plce[stages];
+        }
+
+        public PipelineLayoutCacheEntry GetOrCreate(VulkanRenderer gd, Device device, PipelineLayoutUsageInfo usageInfo)
+        {
+            foreach ((var entryUsageInfo, var entry) in _plceBindless)
+            {
+                if (entryUsageInfo.Stages == usageInfo.Stages &&
+                    entryUsageInfo.UsePushDescriptors == usageInfo.UsePushDescriptors &&
+                    entryUsageInfo.BindlessTexturesCount >= usageInfo.BindlessTexturesCount &&
+                    entryUsageInfo.BindlessSamplersCount >= usageInfo.BindlessSamplersCount)
+                {
+                    return entry;
+                }
+            }
+
+            var plce = new PipelineLayoutCacheEntry(gd, device, usageInfo);
+
+            _plceBindless.Add((usageInfo, plce));
+
+            return plce;
         }
 
         protected virtual unsafe void Dispose(bool disposing)
@@ -47,6 +69,13 @@ namespace Ryujinx.Graphics.Vulkan
                 }
 
                 _plceMinimal.Clear();
+
+                foreach ((_, var plce) in _plceBindless)
+                {
+                    plce.Dispose();
+                }
+
+                _plceBindless.Clear();
             }
         }
 

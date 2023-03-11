@@ -30,6 +30,11 @@ namespace Ryujinx.Graphics.Vulkan
         private BufferView[] _bufferTextures;
         private BufferView[] _bufferImages;
 
+        private readonly BindlessManager _bindlessManager;
+
+        public uint BindlessTexturesCount => _bindlessManager.TexturesCount;
+        public uint BindlessSamplersCount => _bindlessManager.SamplersCount;
+
         private bool[] _uniformSet;
         private bool[] _storageSet;
         private Silk.NET.Vulkan.Buffer _cachedSupportBuffer;
@@ -42,7 +47,8 @@ namespace Ryujinx.Graphics.Vulkan
             Storage = 1 << 1,
             Texture = 1 << 2,
             Image = 1 << 3,
-            All = Uniform | Storage | Texture | Image
+            Bindless = 1 << 4,
+            All = Uniform | Storage | Texture | Image | Bindless
         }
 
         private DirtyFlags _dirty;
@@ -83,6 +89,8 @@ namespace Ryujinx.Graphics.Vulkan
             _textures.AsSpan().Fill(initialImageInfo);
             _images.AsSpan().Fill(initialImageInfo);
 
+            _bindlessManager = new BindlessManager();
+
             _uniformSet = new bool[Constants.MaxUniformBufferBindings];
             _storageSet = new bool[Constants.MaxStorageBufferBindings];
 
@@ -94,7 +102,7 @@ namespace Ryujinx.Graphics.Vulkan
             else
             {
                 // If null descriptors are not supported, we need to pass the handle of a dummy buffer on unused bindings.
-                _dummyBuffer = gd.BufferManager.Create(gd, 0x10000, forConditionalRendering: false, deviceLocal: true);
+                _dummyBuffer = gd.BufferManager.Create(gd, 0x10000, forConditionalRendering: false, baseType: BufferAllocationType.DeviceLocal);
             }
 
             _dummyTexture = gd.CreateTextureView(new TextureCreateInfo(
@@ -178,7 +186,7 @@ namespace Ryujinx.Graphics.Vulkan
                 var buffer = assignment.Range;
                 int index = assignment.Binding;
 
-                Auto<DisposableBuffer> vkBuffer = _gd.BufferManager.GetBuffer(commandBuffer, buffer.Handle, false);
+                Auto<DisposableBuffer> vkBuffer = _gd.BufferManager.GetBuffer(commandBuffer, buffer.Handle, false, isSSBO: true);
                 ref Auto<DisposableBuffer> currentVkBuffer = ref _storageBufferRefs[index];
 
                 DescriptorBufferInfo info = new DescriptorBufferInfo()
@@ -281,6 +289,20 @@ namespace Ryujinx.Graphics.Vulkan
             SignalDirty(DirtyFlags.Uniform);
         }
 
+        public void SetBindlessTexture(int textureId, ITexture texture)
+        {
+            _bindlessManager.SetBindlessTexture(textureId, texture);
+
+            SignalDirty(DirtyFlags.Bindless);
+        }
+
+        public void SetBindlessSampler(int samplerId, ISampler sampler)
+        {
+            _bindlessManager.SetBindlessSampler(samplerId, ((SamplerHolder)sampler)?.GetSampler());
+
+            SignalDirty(DirtyFlags.Bindless);
+        }
+
         private void SignalDirty(DirtyFlags flag)
         {
             _dirty |= flag;
@@ -318,6 +340,11 @@ namespace Ryujinx.Graphics.Vulkan
             if (_dirty.HasFlag(DirtyFlags.Image))
             {
                 UpdateAndBind(cbs, PipelineBase.ImageSetIndex, pbp);
+            }
+
+            if (_dirty.HasFlag(DirtyFlags.Bindless) && !_program.HasMinimalLayout)
+            {
+                _bindlessManager.UpdateAndBind(_gd, _program, cbs, pbp, _dummySampler);
             }
 
             _dirty = DirtyFlags.None;
@@ -506,9 +533,10 @@ namespace Ryujinx.Graphics.Vulkan
                 }
             }
 
+            var pipelineLayout = _program.GetPipelineLayout(_gd, BindlessTexturesCount, BindlessSamplersCount);
             var sets = dsc.GetSets();
 
-            _gd.Api.CmdBindDescriptorSets(cbs.CommandBuffer, pbp, _program.PipelineLayout, (uint)setIndex, 1, sets, 0, ReadOnlySpan<uint>.Empty);
+            _gd.Api.CmdBindDescriptorSets(cbs.CommandBuffer, pbp, pipelineLayout, (uint)setIndex, 1, sets, 0, ReadOnlySpan<uint>.Empty);
         }
 
         private unsafe void UpdateBuffers(
@@ -523,6 +551,8 @@ namespace Ryujinx.Graphics.Vulkan
                 return;
             }
 
+            var pipelineLayout = _program.GetPipelineLayout(_gd, BindlessTexturesCount, BindlessSamplersCount);
+
             fixed (DescriptorBufferInfo* pBufferInfo = bufferInfo)
             {
                 var writeDescriptorSet = new WriteDescriptorSet
@@ -534,7 +564,7 @@ namespace Ryujinx.Graphics.Vulkan
                     PBufferInfo = pBufferInfo
                 };
 
-                _gd.PushDescriptorApi.CmdPushDescriptorSet(cbs.CommandBuffer, pbp, _program.PipelineLayout, 0, 1, &writeDescriptorSet);
+                _gd.PushDescriptorApi.CmdPushDescriptorSet(cbs.CommandBuffer, pbp, pipelineLayout, 0, 1, &writeDescriptorSet);
             }
         }
 
@@ -638,6 +668,23 @@ namespace Ryujinx.Graphics.Vulkan
 
             Array.Clear(_uniformSet);
             Array.Clear(_storageSet);
+        }
+
+        private void SwapBuffer(Auto<DisposableBuffer>[] list, Auto<DisposableBuffer> from, Auto<DisposableBuffer> to)
+        {
+            for (int i = 0; i < list.Length; i++)
+            {
+                if (list[i] == from)
+                {
+                    list[i] = to;
+                }
+            }
+        }
+
+        public void SwapBuffer(Auto<DisposableBuffer> from, Auto<DisposableBuffer> to)
+        {
+            SwapBuffer(_uniformBufferRefs, from, to);
+            SwapBuffer(_storageBufferRefs, from, to);
         }
 
         protected virtual void Dispose(bool disposing)

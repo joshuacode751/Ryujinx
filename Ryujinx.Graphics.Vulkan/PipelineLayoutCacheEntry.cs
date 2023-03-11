@@ -25,20 +25,20 @@ namespace Ryujinx.Graphics.Vulkan
 
             for (int i = 0; i < CommandBufferPool.MaxCommandBuffers; i++)
             {
-                _dsCache[i] = new List<Auto<DescriptorSetCollection>>[PipelineBase.DescriptorSetLayouts];
+                _dsCache[i] = new List<Auto<DescriptorSetCollection>>[PipelineBase.DescriptorSetLayoutsBindless];
 
-                for (int j = 0; j < PipelineBase.DescriptorSetLayouts; j++)
+                for (int j = 0; j < PipelineBase.DescriptorSetLayoutsBindless; j++)
                 {
                     _dsCache[i][j] = new List<Auto<DescriptorSetCollection>>();
                 }
             }
 
-            _dsCacheCursor = new int[PipelineBase.DescriptorSetLayouts];
+            _dsCacheCursor = new int[PipelineBase.DescriptorSetLayoutsBindless];
         }
 
-        public PipelineLayoutCacheEntry(VulkanRenderer gd, Device device, uint stages, bool usePd) : this(gd, device)
+        public PipelineLayoutCacheEntry(VulkanRenderer gd, Device device, PipelineLayoutUsageInfo usageInfo) : this(gd, device)
         {
-            DescriptorSetLayouts = PipelineLayoutFactory.Create(gd, device, stages, usePd, out var pipelineLayout);
+            DescriptorSetLayouts = PipelineLayoutFactory.Create(gd, device, usageInfo, out var pipelineLayout);
             PipelineLayout = pipelineLayout;
         }
 
@@ -58,7 +58,7 @@ namespace Ryujinx.Graphics.Vulkan
             {
                 _dsLastCbIndex = commandBufferIndex;
 
-                for (int i = 0; i < PipelineBase.DescriptorSetLayouts; i++)
+                for (int i = 0; i < PipelineBase.DescriptorSetLayoutsBindless; i++)
                 {
                     _dsCacheCursor[i] = 0;
                 }

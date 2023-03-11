@@ -45,7 +45,7 @@ namespace Ryujinx.Graphics.OpenGL
 
         public OpenGLRenderer()
         {
-            _pipeline = new Pipeline();
+            _pipeline = new Pipeline(this);
             _counters = new Counters();
             _window = new Window(this);
             _textureCopy = new TextureCopy(this);
@@ -57,7 +57,7 @@ namespace Ryujinx.Graphics.OpenGL
             ResourcePool = new ResourcePool();
         }
 
-        public BufferHandle CreateBuffer(int size)
+        public BufferHandle CreateBuffer(int size, BufferHandle storageHint)
         {
             BufferCount++;
 
@@ -96,7 +96,7 @@ namespace Ryujinx.Graphics.OpenGL
             return new HardwareInfo(GpuVendor, GpuRenderer);
         }
 
-        public ReadOnlySpan<byte> GetBufferData(BufferHandle buffer, int offset, int size)
+        public PinnedSpan<byte> GetBufferData(BufferHandle buffer, int offset, int size)
         {
             return Buffer.GetData(this, buffer, offset, size);
         }
@@ -178,7 +178,7 @@ namespace Ryujinx.Graphics.OpenGL
             }
 
             _pipeline.Initialize(this);
-            _counters.Initialize();
+            _counters.Initialize(_pipeline);
 
             // This is required to disable [0, 1] clamping for SNorm outputs on compatibility profiles.
             // This call is expected to fail if we're running with a core profile,

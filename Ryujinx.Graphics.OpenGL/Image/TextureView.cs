@@ -133,6 +133,28 @@ namespace Ryujinx.Graphics.OpenGL.Image
                 int levels = Math.Min(Info.Levels, destinationView.Info.Levels - firstLevel);
                 _renderer.TextureCopyIncompatible.CopyIncompatibleFormats(this, destinationView, 0, firstLayer, 0, firstLevel, layers, levels);
             }
+            else if (destinationView.Format.IsDepthOrStencil() != Format.IsDepthOrStencil())
+            {
+                int layers = Math.Min(Info.GetLayers(), destinationView.Info.GetLayers() - firstLayer);
+                int levels = Math.Min(Info.Levels, destinationView.Info.Levels - firstLevel);
+
+                for (int level = 0; level < levels; level++)
+                {
+                    int srcWidth = Math.Max(1, Width >> level);
+                    int srcHeight = Math.Max(1, Height >> level);
+
+                    int dstWidth = Math.Max(1, destinationView.Width >> (firstLevel + level));
+                    int dstHeight = Math.Max(1, destinationView.Height >> (firstLevel + level));
+
+                    int minWidth = Math.Min(srcWidth, dstWidth);
+                    int minHeight = Math.Min(srcHeight, dstHeight);
+
+                    for (int layer = 0; layer < layers; layer++)
+                    {
+                        _renderer.TextureCopy.PboCopy(this, destinationView, 0, firstLayer + layer, 0, firstLevel + level, minWidth, minHeight);
+                    }
+                }
+            }
             else
             {
                 _renderer.TextureCopy.CopyUnscaled(this, destinationView, 0, firstLayer, 0, firstLevel);
@@ -155,6 +177,13 @@ namespace Ryujinx.Graphics.OpenGL.Image
             {
                 _renderer.TextureCopyIncompatible.CopyIncompatibleFormats(this, destinationView, srcLayer, dstLayer, srcLevel, dstLevel, 1, 1);
             }
+            else if (destinationView.Format.IsDepthOrStencil() != Format.IsDepthOrStencil())
+            {
+                int minWidth = Math.Min(Width, destinationView.Width);
+                int minHeight = Math.Min(Height, destinationView.Height);
+
+                _renderer.TextureCopy.PboCopy(this, destinationView, srcLayer, dstLayer, srcLevel, dstLevel, minWidth, minHeight);
+            }
             else
             {
                 _renderer.TextureCopy.CopyUnscaled(this, destinationView, srcLayer, dstLayer, srcLevel, dstLevel, 1, 1);
@@ -166,7 +195,7 @@ namespace Ryujinx.Graphics.OpenGL.Image
             _renderer.TextureCopy.Copy(this, (TextureView)destination, srcRegion, dstRegion, linearFilter);
         }
 
-        public unsafe ReadOnlySpan<byte> GetData()
+        public unsafe PinnedSpan<byte> GetData()
         {
             int size = 0;
             int levels = Info.GetLevelsClamped();
@@ -196,16 +225,16 @@ namespace Ryujinx.Graphics.OpenGL.Image
                 data = FormatConverter.ConvertD24S8ToS8D24(data);
             }
 
-            return data;
+            return new PinnedSpan<byte>(data);
         }
 
-        public unsafe ReadOnlySpan<byte> GetData(int layer, int level)
+        public unsafe PinnedSpan<byte> GetData(int layer, int level)
         {
             int size = Info.GetMipSize(level);
 
             if (HwCapabilities.UsePersistentBufferForFlush)
             {
-                return _renderer.PersistentBuffers.Default.GetTextureData(this, size, layer, level);
+                return new PinnedSpan<byte>(_renderer.PersistentBuffers.Default.GetTextureData(this, size, layer, level));
             }
             else
             {
@@ -213,7 +242,7 @@ namespace Ryujinx.Graphics.OpenGL.Image
 
                 int offset = WriteTo2D(target, layer, level);
 
-                return new ReadOnlySpan<byte>(target.ToPointer(), size).Slice(offset);
+                return new PinnedSpan<byte>(new ReadOnlySpan<byte>(target.ToPointer(), size).Slice(offset));
             }
         }
 
@@ -770,6 +799,8 @@ namespace Ryujinx.Graphics.OpenGL.Image
         /// </summary>
         public void Release()
         {
+            RevokeBindlessAccess();
+
             bool hadHandle = Handle != 0;
 
             if (_parent.DefaultView != this)
